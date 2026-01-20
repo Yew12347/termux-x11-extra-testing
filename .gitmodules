@@ -38,6 +38,7 @@
 	path = app/src/main/cpp/libepoxy
 	url = https://github.com/anholt/libepoxy
 	ignore = dirty
+	branch = e98617e
 [submodule "app/src/main/cpp/libxcvt"]
 	path = app/src/main/cpp/libxcvt
 	url = https://gitlab.freedesktop.org/xorg/lib/libxcvt.git
