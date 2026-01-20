@@ -1,26 +1,25 @@
 name: Build
 
 on:
-  workflow_dispatch:   # manual trigger button
-
   push:
     branches:
       - master
     paths-ignore:
       - '**.md'
       - 'img/**'
-
   pull_request:
     branches:
       - master
     paths-ignore:
       - '**.md'
       - 'img/**'
+  workflow_dispatch:
 
 jobs:
   build:
     name: "Build"
     runs-on: ubuntu-latest
+
     steps:
     - name: Clone repository
       uses: actions/checkout@v5
@@ -36,20 +35,32 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
-        
+
+    # Install ONLY what the project needs (fixes cmake error)
+    - name: Setup Android SDK (NDK + CMake)
+      run: |
+        yes | sdkmanager --licenses
+        sdkmanager \
+          "platform-tools" \
+          "platforms;android-34" \
+          "build-tools;34.0.0" \
+          "ndk;26.1.10909125" \
+          "cmake;3.22.1"
+
     - name: Restore cache
       uses: actions/cache@v4
       with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
-
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
 
     - name: Build
-      run: ./gradlew assembleDebug
+      env:
+        ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
+      run: ./gradlew assembleDebug --stacktrace
 
     - name: Build companion package
       run: ./build_termux_package
@@ -87,31 +98,7 @@ jobs:
     - name: Store companion package
       uses: actions/upload-artifact@v4
       with:
-        name: termux-companion packages
+        name: termux-companion-packages
         path: |
-          ./app/build/outputs/apk/debug/termux-x11-*-all.deb
-          ./app/build/outputs/apk/debug/termux-x11-*-any.pkg.tar.xz
-        
-    - name: Store unstripped libraries with debug symbols
-      uses: actions/upload-artifact@v4
-      with:
-        name: termux-x11-unstripped-libraries-for-ndk-stack
-        path: ./app/build/intermediates/cxx/Debug/*
-
-    - name: Update Nightly Release
-      uses: andelf/nightly-release@main
-      if: github.repository == 'termux/termux-x11' && github.ref == 'refs/heads/master'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: nightly
-        name: 'Nightly Release $$'
-        draft: false
-        prerelease: false
-        body: |
-          This is a nightly release of the termux-x11 app.
-          Based on ${{ github.sha }}
-        files: |
-          ./app/build/outputs/apk/debug/app-*-debug.apk
           ./app/build/outputs/apk/debug/termux-x11-*-all.deb
           ./app/build/outputs/apk/debug/termux-x11-*-any.pkg.tar.xz
