@@ -36,8 +36,12 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    # Install ONLY what the project needs (fixes cmake error)
-    - name: Setup Android SDK (NDK + CMake)
+    # 🔥 THIS installs Android SDK + sdkmanager correctly
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    # Now sdkmanager WORKS
+    - name: Install NDK + CMake
       run: |
         yes | sdkmanager --licenses
         sdkmanager \
