@@ -2,14 +2,12 @@ name: Build
 
 on:
   push:
-    branches:
-      - master
+    branches: [ master ]
     paths-ignore:
       - '**.md'
       - 'img/**'
   pull_request:
-    branches:
-      - master
+    branches: [ master ]
     paths-ignore:
       - '**.md'
       - 'img/**'
@@ -18,7 +16,7 @@ on:
 jobs:
   build:
     name: "Build"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04   # IMPORTANT: not ubuntu-latest (newer breaks stuff)
 
     steps:
     # -------------------- CHECKOUT --------------------
@@ -28,10 +26,6 @@ jobs:
         submodules: recursive
         fetch-depth: 1
 
-    # -------------------- GRADLE VALIDATION --------------------
-    - name: Validation
-      uses: gradle/actions/wrapper-validation@v4
-
     # -------------------- JAVA --------------------
     - name: Java setup
       uses: actions/setup-java@v5
@@ -39,27 +33,33 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
+    # -------------------- FORCE OLD GRADLE --------------------
+    - name: Setup Gradle 7.6
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: 7.6
+
+    # ❌ REMOVE wrapper validation (it breaks old projects)
+    # - name: Validation
+    #   uses: gradle/actions/wrapper-validation@v4
+
     # -------------------- ANDROID SDK --------------------
-    # This installs Android SDK + cmdline-tools + puts sdkmanager in PATH
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    # -------------------- INSTALL NDK + CMAKE (NO LICENSE PROMPT) --------------------
+    # -------------------- INSTALL NDK + CMAKE --------------------
     - name: Install Android packages (NDK + CMake)
       env:
         ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
       run: |
+        yes | sdkmanager --licenses
+
         sdkmanager \
           "platform-tools" \
           "platforms;android-34" \
           "build-tools;34.0.0" \
           "ndk;26.1.10909125" \
           "cmake;3.22.1"
-
-        # Manually accept ONLY required licenses (prevents Google TV popup)
-        mkdir -p "$ANDROID_SDK_ROOT/licenses"
-        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
-        echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_SDK_ROOT/licenses/android-sdk-preview-license"
 
     # -------------------- CACHE --------------------
     - name: Restore cache
@@ -76,7 +76,9 @@ jobs:
     - name: Build
       env:
         ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
-      run: ./gradlew assembleDebug --stacktrace
+      run: |
+        ./gradlew --version
+        ./gradlew assembleDebug --stacktrace --no-daemon
 
     # -------------------- COMPANION PACKAGE --------------------
     - name: Build companion package
