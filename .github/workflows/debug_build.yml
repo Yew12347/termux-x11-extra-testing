@@ -21,29 +21,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # -------------------- CHECKOUT --------------------
     - name: Clone repository
       uses: actions/checkout@v5
       with:
         submodules: recursive
         fetch-depth: 1
 
+    # -------------------- GRADLE VALIDATION --------------------
     - name: Validation
       uses: gradle/actions/wrapper-validation@v4
-      
+
+    # -------------------- JAVA --------------------
     - name: Java setup
       uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: '17'
 
-    # 🔥 THIS installs Android SDK + sdkmanager correctly
+    # -------------------- ANDROID SDK --------------------
+    # This installs Android SDK + cmdline-tools + puts sdkmanager in PATH
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    # Now sdkmanager WORKS
-    - name: Install NDK + CMake
+    # -------------------- INSTALL NDK + CMAKE (NO LICENSE PROMPT) --------------------
+    - name: Install Android packages (NDK + CMake)
+      env:
+        ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
       run: |
-        yes | sdkmanager --licenses
         sdkmanager \
           "platform-tools" \
           "platforms;android-34" \
@@ -51,6 +56,12 @@ jobs:
           "ndk;26.1.10909125" \
           "cmake;3.22.1"
 
+        # Manually accept ONLY required licenses (prevents Google TV popup)
+        mkdir -p "$ANDROID_SDK_ROOT/licenses"
+        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
+        echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_SDK_ROOT/licenses/android-sdk-preview-license"
+
+    # -------------------- CACHE --------------------
     - name: Restore cache
       uses: actions/cache@v4
       with:
@@ -61,14 +72,17 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-gradle-
 
+    # -------------------- BUILD --------------------
     - name: Build
       env:
         ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
       run: ./gradlew assembleDebug --stacktrace
 
+    # -------------------- COMPANION PACKAGE --------------------
     - name: Build companion package
       run: ./build_termux_package
 
+    # -------------------- UPLOAD APKs --------------------
     - name: Store app-arm64-v8a-debug
       uses: actions/upload-artifact@v4
       with:
@@ -98,7 +112,8 @@ jobs:
       with:
         name: termux-x11-x86-debug
         path: ./app/build/outputs/apk/debug/app-x86-debug.apk
-    
+
+    # -------------------- UPLOAD COMPANION PACKAGES --------------------
     - name: Store companion package
       uses: actions/upload-artifact@v4
       with:
