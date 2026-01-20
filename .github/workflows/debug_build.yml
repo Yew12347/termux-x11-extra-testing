@@ -25,7 +25,11 @@ jobs:
       with:
         submodules: recursive
         fetch-depth: 1
-
+# -------------------- NUKE OLD GRADLE CACHE --------------------
+    - name: Clear Gradle wrapper cache
+      run: |
+        rm -rf ~/.gradle/wrapper
+        rm -rf ~/.gradle/caches
     # -------------------- JAVA 11 --------------------
     - name: Set up Java 11
       uses: actions/setup-java@v5
