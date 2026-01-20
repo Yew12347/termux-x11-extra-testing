@@ -52,9 +52,9 @@ jobs:
 
         sdkmanager \
           "platform-tools" \
-          "platforms;android-34" \
-          "build-tools;34.0.0" \
-          "ndk;26.1.10909125" \
+          "platforms;android-30" \
+          "build-tools;30.0.0" \
+          "ndk;21.4.7075529" \
           "cmake;3.22.1"
 
     # -------------------- CACHE --------------------
